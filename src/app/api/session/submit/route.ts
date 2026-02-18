@@ -3,8 +3,8 @@ import { db } from '@/lib/db'
 import { updateMasteryState } from '@/core/mastery'
 import { generateContent } from '@/core/generator'
 import { selectAnimation } from '@/core/animation'
-import { calculateNewStreak } from '@/core/streak' // NEW
-import { logger } from '@/lib/logger' // NEW
+import { calculateNewStreak } from '@/core/streak'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
     try {
@@ -80,6 +80,23 @@ export async function POST(req: NextRequest) {
                 highestDifficultySolved: nextState.highestDifficultySolved
             }
         })
+
+        // 6. Update Daily Quest Progress
+        if (isCorrect) {
+            const today = new Date().toISOString().split('T')[0]
+            const questState = await db.userQuestState.findUnique({ where: { userId: session.userId } })
+
+            if (questState && questState.date.toISOString().split('T')[0] === today) {
+                const warmupId = 'math-add-1'
+                const challengeId = 'math-sub-2'
+
+                if (item.skillId === warmupId && !questState.warmupDone) {
+                    await db.userQuestState.update({ where: { id: questState.id }, data: { warmupDone: true } })
+                } else if (item.skillId === challengeId && !questState.gameDone) {
+                    await db.userQuestState.update({ where: { id: questState.id }, data: { gameDone: true } })
+                }
+            }
+        }
 
         // 4. Animation Selection
         const animation = selectAnimation({

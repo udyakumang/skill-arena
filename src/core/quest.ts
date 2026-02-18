@@ -1,45 +1,63 @@
-import { ToneProfile } from './types'
 
-// Quest Structure
-export type DailyQuestConfig = {
-    warmup: { skillId: string; count: number }
-    core: { skillId: string; count: number }
-    challenge: { skillId: string; count: number }
+import { db } from '@/lib/db'
+
+export type DailyQuestStatus = {
+    date: string
+    warmup: { skillId: string, completed: boolean }
+    challenge: { skillId: string, completed: boolean }
+    isComplete: boolean
 }
 
-export type QuestSessionParams = {
-    userId: string
-    tone: ToneProfile
-    ageBand: string
-}
+export async function getDailyQuestStatus(userId: string): Promise<DailyQuestStatus> {
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
 
-// 1. Generate the Daily Plan (The "Director")
-export async function generateDailyQuest(): Promise<DailyQuestConfig> {
-    // A. Warmup: Find a skill with < 100% stability or recently wrong
-    // For MVP: Pick random active skill or default
-    const warmupSkill = 'math-add-1'
+    // 1. Get or Create User Quest State
+    let questState = await db.userQuestState.findUnique({
+        where: { userId }
+    })
 
-    // B. Core: The main learning objective (next unlocked skill)
-    // For MVP: Hardcoded progression for now
-    const coreSkill = 'math-sub-1'
+    // Reset if new day
+    if (questState && questState.date.toISOString().split('T')[0] !== today) {
+        await db.userQuestState.update({
+            where: { userId },
+            data: {
+                date: new Date(),
+                warmupDone: false,
+                skillDone: false, // Legacy field
+                practiceDone: false, // Legacy field
+                gameDone: false,
+                bonusDone: false
+            }
+        })
+        questState = await db.userQuestState.findUnique({ where: { userId } })
+    }
 
-    // C. Challenge: A skill they have mastered but at higher difficulty
-    const challengeSkill = 'math-add-1'
+    // Create if missing
+    if (!questState) {
+        questState = await db.userQuestState.create({
+            data: {
+                userId,
+                date: new Date(),
+            }
+        })
+    }
+
+    // 2. Define Quest Skills (Static for MVP, Dynamic later)
+    const warmupSkillId = 'math-add-1'
+    const challengeSkillId = 'math-sub-2'
 
     return {
-        warmup: { skillId: warmupSkill, count: 5 },
-        core: { skillId: coreSkill, count: 10 },
-        challenge: { skillId: challengeSkill, count: 5 }
+        date: today,
+        warmup: { skillId: warmupSkillId, completed: questState!.warmupDone },
+        challenge: { skillId: challengeSkillId, completed: questState!.gameDone },
+        isComplete: questState!.warmupDone && questState!.gameDone
     }
 }
 
-// 2. Start Quest Session
-// This would be called by the API to create the specific items
 export async function startQuestSession() {
-    const config = await generateDailyQuest()
-
-    // Create a new session of type 'PRACTICE' or 'QUEST'
-    // ... logic to populate DB session items based on config ...
-    // This will be implemented in the /api/quest/start route
-    return config
+    // For MVP, just return the static config
+    return {
+        warmupSkillId: 'math-add-1',
+        challengeSkillId: 'math-sub-2'
+    }
 }

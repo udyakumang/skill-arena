@@ -15,6 +15,9 @@ export type SafetyResult = {
 }
 
 export function validateString(input: string): SafetyResult {
+    if (typeof input !== 'string') {
+        return { valid: false, reason: 'Invalid input type' }
+    }
     const lower = input.toLowerCase()
 
     // 1. Check Profanity
