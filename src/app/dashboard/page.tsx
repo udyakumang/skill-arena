@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
+import { SkillTree } from '@/components/dashboard/SkillTree'
 
 function DashboardContent() {
     const searchParams = useSearchParams()
@@ -65,91 +66,124 @@ function DashboardContent() {
         const data = await res.json()
         setFeedback(data)
 
-        // Auto-advance
+        // Auto-advance faster
         setTimeout(() => {
             if (data.nextItem) {
                 setItem(data.nextItem)
                 setAnswer('')
                 setFeedback(null)
             }
-        }, 2000)
+        }, 1000) // Reduced from 2000ms to 1000ms for snappier feel
     }
 
     if (!userId) return null
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-4 md:p-8">
-            <div className="max-w-4xl mx-auto">
-                <header className="flex justify-between items-center mb-12">
-                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-pink-400">
-                        Skill Arena Dashboard
-                    </h1>
-                    <div className="text-sm text-slate-400">Player: <span className="text-white">{userId.split('-')[0]}...</span></div>
-                </header>
+        <div className="min-h-screen bg-slate-950 text-white flex">
+            {/* Sidebar */}
+            <SkillTree />
 
-                {!started ? (
-                    <div className="glass-card p-10 rounded-2xl text-center max-w-lg mx-auto">
-                        <div className="w-20 h-20 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
-                            ⚔️
+            {/* Main Content */}
+            <div className="flex-1 p-4 md:p-8 max-h-screen overflow-y-auto">
+                <div className="max-w-4xl mx-auto">
+                    <header className="flex justify-between items-center mb-12">
+                        <div>
+                            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-pink-400">
+                                Skill Arena
+                            </h1>
+                            <div className="text-sm text-slate-500">Daily Diagnostic</div>
                         </div>
-                        <h2 className="text-3xl font-bold mb-4">Ready to Train?</h2>
-                        <p className="text-slate-400 mb-8">
-                            Your daily quest awaits. Focus, adapt, and enter the flow state.
-                        </p>
-                        <Button size="lg" onClick={startSession} disabled={loading} className="w-full">
-                            {loading ? 'Entering Arena...' : 'Start Practice Session'}
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="max-w-2xl mx-auto space-y-8">
-                        {/* Game Card */}
-                        <div className="glass-card p-12 rounded-3xl relative overflow-hidden min-h-[400px] flex flex-col items-center justify-center text-center ring-1 ring-white/10">
-                            {feedback ? (
-                                <div className="space-y-4 animate-in fade-in zoom-in duration-300">
-                                    <div className="text-8xl mb-4">
-                                        {feedback.result.isCorrect ? '✨' : '🛡️'}
-                                    </div>
-                                    <div className="text-2xl font-bold text-white">
-                                        {feedback.result.isCorrect ? 'Brilliant!' : 'Keep going!'}
-                                    </div>
-                                    <div className="text-indigo-300">
-                                        {feedback.animation?.layers?.character || "Correct!"}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="w-full space-y-8">
-                                    <div className="text-slate-500 text-sm tracking-[0.2em] uppercase font-bold">
-                                        Question
-                                    </div>
-                                    <h2 className="text-5xl md:text-6xl font-bold text-white font-mono">
-                                        {item?.question}
-                                    </h2>
-                                </div>
-                            )}
+                        <div className="flex items-center gap-4">
+                            <div className="text-right hidden sm:block">
+                                <div className="text-sm font-bold text-white">{userId.split('-')[0]}</div>
+                                <div className="text-xs text-slate-400">Level 1 Novice</div>
+                            </div>
+                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-lg">
+                                👤
+                            </div>
                         </div>
+                    </header>
 
-                        {/* Input Controls */}
-                        <div className="flex gap-4 max-w-md mx-auto">
-                            <input
-                                type="text"
-                                value={answer}
-                                onChange={(e) => setAnswer(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && answer && !feedback && submitAnswer()}
-                                className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-6 py-4 text-2xl text-center outline-none focus:ring-2 ring-indigo-500 text-white placeholder-slate-600"
-                                placeholder="?"
-                                disabled={!!feedback}
-                                autoFocus
-                            />
-                            <Button
-                                onClick={submitAnswer}
-                                disabled={!answer || !!feedback}
-                                size="lg"
-                            >
-                                Submit
+                    {!started ? (
+                        <div className="glass-card p-10 rounded-2xl text-center max-w-lg mx-auto mt-20">
+                            <div className="w-20 h-20 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl animate-pulse">
+                                ⚔️
+                            </div>
+                            <h2 className="text-3xl font-bold mb-4">Ready to Train?</h2>
+                            <p className="text-slate-400 mb-8">
+                                Your daily quest awaits. We&apos;ll start with a diagnostic to calibrate your cognitive load.
+                            </p>
+                            <Button size="lg" onClick={startSession} disabled={loading} className="w-full">
+                                {loading ? 'Entering Arena...' : 'Start Practice Session'}
                             </Button>
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <div className="max-w-2xl mx-auto space-y-8 mt-10">
+                            {/* Progress Header */}
+                            <div className="flex justify-between items-center text-sm text-slate-400 px-2">
+                                <div>Topic: <span className="text-indigo-400 font-bold">Addition (1-10)</span></div>
+                                <div>Streak: 🔥 1</div>
+                            </div>
+
+                            {/* Game Card */}
+                            <div className="glass-card p-12 rounded-3xl relative overflow-hidden min-h-[400px] flex flex-col items-center justify-center text-center ring-1 ring-white/10 shadow-2xl shadow-indigo-500/10">
+                                {feedback ? (
+                                    <div className="space-y-4 animate-in fade-in zoom-in duration-300">
+                                        <div className="text-8xl mb-4">
+                                            {feedback.result.isCorrect ? '✨' : '🛡️'}
+                                        </div>
+                                        <div className="text-2xl font-bold text-white">
+                                            {feedback.result.isCorrect ? 'Brilliant!' : 'Keep going!'}
+                                        </div>
+                                        <div className="text-indigo-300">
+                                            {feedback.animation?.layers?.character || "Correct!"}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <div className="text-slate-500 text-sm tracking-[0.2em] uppercase font-bold">
+                                            Solve
+                                        </div>
+                                        <h2 className="text-6xl md:text-7xl font-bold text-white font-mono tracking-tighter">
+                                            {item?.question}
+                                        </h2>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Input Controls */}
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault()
+                                    if (answer && !feedback) submitAnswer()
+                                }}
+                                className="flex gap-4 max-w-md mx-auto"
+                            >
+                                <input
+                                    type="text"
+                                    value={answer}
+                                    onChange={(e) => setAnswer(e.target.value)}
+                                    className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-6 py-4 text-2xl text-center outline-none focus:ring-2 ring-indigo-500 text-white placeholder-slate-600 font-mono"
+                                    placeholder="?"
+                                    disabled={!!feedback}
+                                    autoFocus
+                                />
+                                <Button
+                                    type="submit"
+                                    disabled={!answer || !!feedback}
+                                    size="lg"
+                                    className="px-8 text-xl"
+                                >
+                                    Submit
+                                </Button>
+                            </form>
+
+                            <div className="text-center text-xs text-slate-600">
+                                Press <span className="font-mono bg-slate-800 px-1 rounded">Enter</span> to submit
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     )
