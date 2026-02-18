@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { generateContent } from '@/core/generator'
+import { logger } from '@/lib/logger' // NEW
 
 // Simulated "Ghost" Opponent
 // In a real app, we'd fetch a recent session from a peer with similar CR.
@@ -45,6 +46,7 @@ function calculateTargetScore(ghostCr: number, _difficulty: number): number {
 export async function POST(req: NextRequest) {
     try {
         const { userId } = await req.json()
+        logger.info('Matchmaking request', 'Arena', { userId })
 
         // 1. Get User
         const user = await db.user.findUnique({ where: { id: userId } })
@@ -97,6 +99,12 @@ export async function POST(req: NextRequest) {
             include: { items: true }
         })
 
+        logger.info('Match created', 'Arena', {
+            sessionId: session.id,
+            opponent: ghost.name,
+            targetScore
+        })
+
         return NextResponse.json({
             sessionId: session.id,
             opponent: ghost,
@@ -105,6 +113,7 @@ export async function POST(req: NextRequest) {
         })
 
     } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+        logger.error('Matchmaking failed', 'Arena', e)
         return NextResponse.json({ error: e.message }, { status: 500 })
     }
 }

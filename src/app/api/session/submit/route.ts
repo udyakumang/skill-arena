@@ -4,6 +4,7 @@ import { updateMasteryState } from '@/core/mastery'
 import { generateContent } from '@/core/generator'
 import { selectAnimation } from '@/core/animation'
 import { calculateNewStreak } from '@/core/streak' // NEW
+import { logger } from '@/lib/logger' // NEW
 
 export async function POST(req: NextRequest) {
     try {
@@ -107,6 +108,14 @@ export async function POST(req: NextRequest) {
             }
         })
 
+        // Logger call
+        logger.info('Session item submitted', 'Session', {
+            sessionId,
+            itemId,
+            isCorrect,
+            newScore: nextState.score
+        })
+
         return NextResponse.json({
             result: { isCorrect, masteryScore: nextState.score, streak: nextState.streak },
             animation,
@@ -118,6 +127,7 @@ export async function POST(req: NextRequest) {
         })
 
     } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+        logger.error('Session submit failed', 'Session', e)
         return NextResponse.json({ error: e.message }, { status: 500 })
     }
 }
