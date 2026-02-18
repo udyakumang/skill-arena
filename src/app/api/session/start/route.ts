@@ -7,7 +7,12 @@ import { logger } from '@/lib/logger' // NEW
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
-        const { userId, type = 'PRACTICE', skillId } = body // Default to PRACTICE
+        const { userId, type = 'PRACTICE', skillId } = body
+
+        if (!userId) {
+            logger.warn('Session start blocked (Missing User)', 'Session', { body })
+            return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+        }
 
         logger.info('Session start request', 'Session', { userId, type, skillId })
 
