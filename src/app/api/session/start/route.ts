@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { generateContent } from '@/core/generator'
+import { logger } from '@/lib/logger' // NEW
 
 // Start Session
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
-        const { userId, type, skillId } = body // type: 'DIAGNOSTIC' | 'PRACTICE'
+        const { userId, type = 'PRACTICE', skillId } = body // Default to PRACTICE
+
+        logger.info('Session start request', 'Session', { userId, type, skillId })
 
         // 1. Create Session
         const session = await db.session.create({
@@ -47,6 +50,7 @@ export async function POST(req: NextRequest) {
             }
         })
     } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+        logger.error('Session start failed', 'Session', e)
         return NextResponse.json({ error: e.message }, { status: 500 })
     }
 }
