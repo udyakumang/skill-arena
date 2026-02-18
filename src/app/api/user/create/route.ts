@@ -11,18 +11,32 @@ export async function POST(req: NextRequest) {
         logger.info('User create request', 'User', { name })
 
         let validName = name
-        if (name) {
-            const safety = validateString(name)
+        let email = undefined
+
+        if (name && typeof name === 'string') {
+            // Check if input is email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (emailRegex.test(name)) {
+                email = name
+                validName = name.split('@')[0] // Use handle as name
+                logger.info('User create: Email detected, using handle', 'User', { email, validName })
+            }
+
+            const safety = validateString(validName)
             if (!safety.valid) {
                 logger.warn('User create blocked (Safety)', 'User', { name, reason: safety.reason })
                 return NextResponse.json({ error: safety.reason }, { status: 400 })
             }
             validName = safety.sanitized
+        } else if (name && typeof name !== 'string') {
+            logger.warn('User create blocked (Invalid Type)', 'User', { name });
+            return NextResponse.json({ error: "Name must be a string" }, { status: 400 });
         }
 
         const user = await db.user.create({
             data: {
                 name: validName,
+                email: email, // Store email if provided
                 role: 'STUDENT',
                 ageBand: "6-8",
                 toneProfile: "BALANCED"
