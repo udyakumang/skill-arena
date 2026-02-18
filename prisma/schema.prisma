@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- USER & AUTH ---
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(STUDENT)
+  
+  // Cognitive Profile
+  ageBand       String    @default("10-12")
+  cr            Int       @default(1000)
+  countryCode   String?
+  toneProfile   String    @default("BALANCED") 
+  avatarConfig  Json?     // { base: "robot", color: "blue", accessories: [] }
+  
+  // Progression
+  masteryStates MasteryState[]
+  sessions      Session[]
+  questState    UserQuestState?
+  ladderEntries LadderEntry[]
+  animationLogs AnimationUsageLog[]
+  
+  // Privacy & Consent
+  consents      PrivacyConsent[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model PrivacyConsent {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // e.g. "PARENTAL_CONTROL", "DATA_USAGE"
+  agreed    Boolean
+  timestamp DateTime @default(now())
+  ip        String?
+  
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// --- REGIONS & LOCALIZATION ---
+
+model Region {
+  code        String @id // e.g. "US", "IN", "UK"
+  name        String
+  currency    String
+  isActive    Boolean @default(true)
+}
+
+enum UserRole {
+  STUDENT
+  PARENT
+  TEACHER
+  ADMIN
+}
+
+// --- SKILL GRAPH ---
+
+model Skill {
+  id            String    @id
+  slug          String    @unique
+  name          String
+  topic         String    // e.g. "Arithmetic", "Algebra"
+  tier          Int       // 1 (Basic) to 10 (Advanced)
+  
+  prerequisites SkillPrerequisite[] @relation("prereq")
+  dependentOn   SkillPrerequisite[] @relation("dependency")
+  
+  blueprints    ContentBlueprint[]
+  masteryStates MasteryState[]
+}
+
+model SkillPrerequisite {
+  skillId       String
+  prereqId      String
+  
+  skill         Skill @relation("dependency", fields: [skillId], references: [id])
+  prereq        Skill @relation("prereq", fields: [prereqId], references: [id])
+  
+  @@id([skillId, prereqId])
+}
+
+// --- MASTERY ENGINE ---
+
+model MasteryState {
+  id              String   @id @default(cuid())
+  userId          String
+  skillId         String
+  
+  // The Core Metrics
+  score           Float    @default(0) // 0-100 internal mastery
+  stability       Int      @default(0) // Consecutive successes impact
+  frustration     Float    @default(0) // 0-100 index (speed drops, error spikes)
+  
+  // Adaptive Learning State
+  confidence      Float    @default(0) // 0-100 derived from speed/hesitation
+  streak          Int      @default(0) // Current streak
+  currentDifficulty Float  @default(0) // The adaptive tracking value
+  highestDifficultySolved Float @default(0) // Peak performance
+
+  visibleTier     MasteryTier @default(NOVICE)
+  
+  lastPracticedAt DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill           Skill    @relation(fields: [skillId], references: [id])
+
+  @@unique([userId, skillId])
+}
+
+enum MasteryTier {
+  NOVICE
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  MASTER
+  GRANDMASTER
+}
+
+// --- CONTENT & CONTENT GENERATION ---
+
+model ContentBlueprint {
+  id          String   @id @default(cuid())
+  skillId     String
+  difficulty  Int      // 1-100
+  generatorId String   // points to code generator function
+  params      Json     // Seed params schema
+  version     Int      @default(1) // Content versioning
+  
+  skill       Skill    @relation(fields: [skillId], references: [id])
+}
+
+// --- DAILY QUEST LOOP ---
+
+model DailyQuest {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date // YYYY-MM-DD
+  
+  // Global Quest Configuration
+  warmupSkillId String?
+  challengeSkillId String?
+}
+
+model UserQuestState {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  date        DateTime @db.Date // Current active quest date
+  
+  // Progress Flags
+  warmupDone  Boolean @default(false)
+  skillDone   Boolean @default(false)
+  practiceDone Boolean @default(false)
+  gameDone    Boolean @default(false)
+  bonusDone   Boolean @default(false)
+  
+  user        User    @relation(fields: [userId], references: [id])
+}
+
+// --- SESSION ARENA ---
+
+model Session {
+  id          String      @id @default(cuid())
+  userId      String
+  type        SessionType
+  status      SessionStatus @default(IN_PROGRESS)
+  
+  startTime   DateTime    @default(now())
+  endTime     DateTime?
+  metadata    Json?       // Stores match details (opponentId, targetScore)
+  
+  // Outcomes
+  xpEarned    Int         @default(0)
+  crChange    Int         @default(0)
+  
+  items       SessionItem[]
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum SessionType {
+  DIAGNOSTIC
+  PRACTICE
+  RANKED
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+model SessionItem {
+  id          String   @id @default(cuid())
+  sessionId   String
+  skillId     String
+  
+  // Snapshot of item
+  question    Json     // The generated data
+  correctAnswer String
+  difficulty  Int
+  
+  // User Action
+  userAnswer  String?
+  isCorrect   Boolean  @default(false)
+  timeTakenMs Int      @default(0)
+  hintsUsed   Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+// --- ANIMATION & ENTERTAINMENT ---
+
+model AnimationUsageLog {
+  id          String   @id @default(cuid())
+  userId      String
+  animationId String   // e.g. "sparkle_burst_v1"
+  rarity      String   // COMMON, RARE, EPIC, LEGENDARY
+  timestamp   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, animationId])
+  @@index([userId, timestamp])
+}
+
+// --- RANKED LADDER ---
+
+model LadderEntry {
+  id          String   @id @default(cuid())
+  userId      String
+  seasonId    String
+  
+  league      League   @default(BRONZE)
+  division    Int      @default(5) // 5 down to 1
+  rankPoints  Int      @default(0)
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, seasonId])
+}
+
+enum League {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  ELITE
+}

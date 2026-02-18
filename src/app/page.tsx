@@ -1,65 +1,129 @@
-import Image from "next/image";
+'use client'
+
+import React, { useState } from 'react'
+// import { v4 as uuidv4 } from 'uuid'
+
+// Mock user create for guest
+// async function createGuestUser() {
+//   // In real app, call /api/auth/guest
+//   // For now, we simulate user ID
+//   return "guest-" + Date.now()
+// }
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+  const [started, setStarted] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [item, setItem] = useState<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [answer, setAnswer] = useState('')
+  const [feedback, setFeedback] = useState<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [userId, setUserId] = useState<string | null>(null)
+
+  const startDiagnostic = async () => {
+    // 1. Guest User Logic
+    let uid = userId
+    if (!uid) {
+      // Create user in DB properly via API 
+      // (Skipping for brevity, assuming existing for test or creating via session start implicitly logic?)
+      // Let's assume we pass a temp ID and backend handles user creation if missing (or we add a /api/user/create route)
+      // For MVP quick start:
+      const res = await fetch('/api/user/create', { method: 'POST' })
+      const data = await res.json()
+      uid = data.id
+      setUserId(uid)
+    }
+
+    // 2. Start Session
+    const res = await fetch('/api/session/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: uid, type: 'DIAGNOSTIC' })
+    })
+    const data = await res.json()
+    setSessionId(data.sessionId)
+    setItem(data.item)
+    setStarted(true)
+    setFeedback(null)
+  }
+
+  const submitAnswer = async () => {
+    if (!item) return
+    // const start = Date.now() // rough timing
+    const res = await fetch('/api/session/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        itemId: item.id,
+        userAnswer: answer,
+        timeTakenMs: 2000, // Mock timing
+        hintsUsed: 0
+      })
+    })
+    const data = await res.json()
+    setFeedback(data)
+
+    // Auto-advance after delay
+    setTimeout(() => {
+      if (data.nextItem) {
+        setItem(data.nextItem)
+        setAnswer('')
+        setFeedback(null)
+      }
+    }, 2000)
+  }
+
+  if (!started) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-slate-900 text-white">
+        <h1 className="text-4xl font-bold mb-4">Skill Arena</h1>
+        <p className="text-xl mb-8 text-slate-300">Train your mind. Master the craft.</p>
+        <button
+          onClick={startDiagnostic}
+          className="px-8 py-4 bg-indigo-600 rounded-full text-lg font-semibold hover:bg-indigo-500 transition shadow-lg shadow-indigo-500/50"
+        >
+          Start Diagnostic Session
+        </button>
       </main>
-    </div>
-  );
+    )
+  }
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-slate-900 text-white">
+      <div className="w-full max-w-md space-y-8">
+        {/* Progress / Animation Area */}
+        <div className="h-64 bg-slate-800 rounded-2xl flex items-center justify-center relative overflow-hidden ring-1 ring-slate-700">
+          {feedback ? (
+            <div className="text-center animate-bounce">
+              <div className="text-6xl mb-2">{feedback.result.isCorrect ? '✨' : '🛡️'}</div>
+              <div className="text-xl font-bold">{feedback.animation?.layers.character}</div>
+            </div>
+          ) : (
+            <div className="text-center">
+              <p className="text-slate-400 text-sm uppercase tracking-widest mb-2">Question</p>
+              <h2 className="text-4xl font-bold">{item?.question}</h2>
+            </div>
+          )}
+        </div>
+
+        {/* Input Area */}
+        <div className="flex gap-4">
+          <input
+            type="text"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            className="flex-1 bg-slate-800 rounded-xl px-4 py-3 text-2xl text-center outline-none focus:ring-2 ring-indigo-500"
+            placeholder="?"
+            disabled={!!feedback}
+          />
+          <button
+            onClick={submitAnswer}
+            disabled={!answer || !!feedback}
+            className="px-6 py-3 bg-indigo-600 rounded-xl font-bold disabled:opacity-50"
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </main>
+  )
 }
