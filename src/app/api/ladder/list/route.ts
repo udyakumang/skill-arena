@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { SimpleCache } from '@/lib/cache'
 
 // Helper to get current Season ID (e.g. "2024-W10")
 function getCurrentSeasonId() {
@@ -21,7 +22,10 @@ export async function GET(req: NextRequest) {
         // Ideally we would use the LadderEntry table, but for now we can just use User.cr directly 
         // as the "Live" ladder, or sync it to LadderEntry.
         // Let's use User.cr for simplicity in Phase 4.2 MVP. 
-        // The LadderEntry model is good for snapshots/historical seasons.
+        // 0. Check Cache (Global Only)
+        const cacheKey = `ladder_${type}_${region || 'global'}`
+        const cached = SimpleCache.get(cacheKey)
+        if (cached) return NextResponse.json(cached)
 
         // 1. Fetch Top 50
         const where: any = {} // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -50,10 +54,14 @@ export async function GET(req: NextRequest) {
             league: getLeagueFromCR(u.cr)
         }))
 
-        return NextResponse.json({
+        const response = {
             seasonId: getCurrentSeasonId(),
             leaderboard: safeBoard
-        })
+        }
+
+        SimpleCache.set(cacheKey, response, 60)
+
+        return NextResponse.json(response)
 
     } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
         return NextResponse.json({ error: e.message }, { status: 500 })

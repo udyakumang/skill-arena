@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { updateMasteryState } from '@/core/mastery'
 import { generateContent } from '@/core/generator'
 import { selectAnimation } from '@/core/animation'
+import { calculateNewStreak } from '@/core/streak' // NEW
 
 export async function POST(req: NextRequest) {
     try {
@@ -44,10 +45,14 @@ export async function POST(req: NextRequest) {
             currentDifficulty: 1, highestDifficultySolved: 0, history: []
         }
 
-        // Run Logic
+        // 47. Run Logic
         const nextState = updateMasteryState(logicState, {
             isCorrect, timeTakenMs, hintsUsed, difficulty: item.difficulty
         })
+
+        // Calculate Streak (Daily Logic)
+        const dailyStreak = calculateNewStreak(dbMastery?.streak || 0, dbMastery?.lastPracticedAt || null)
+        nextState.streak = dailyStreak
 
         // Persist State
         await db.masteryState.upsert({
