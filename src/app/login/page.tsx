@@ -97,7 +97,7 @@ export default function LoginPage() {
                     </form>
 
                     <div className="mt-6 text-center text-sm text-slate-500">
-                        By continuing, you agree to our <a href="#" className="text-indigo-400 hover:text-indigo-300">Terms of Service</a>.
+                        By continuing, you agree to our <Link href="/terms" className="text-indigo-400 hover:text-indigo-300">Terms of Service</Link>.
                     </div>
                 </div>
             </motion.div>
