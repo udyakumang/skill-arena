@@ -115,6 +115,50 @@ export async function POST(req: NextRequest) {
             }
 
 
+            // --- Phase 10: Monetization (Coins) ---
+            const COIN_REWARD = 10
+
+            // Check Premium Status for higher cap
+            const premiumEntitlement = await tx.entitlement.findFirst({
+                where: {
+                    userId,
+                    type: 'PREMIUM',
+                    status: 'ACTIVE',
+                    OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }]
+                }
+            })
+            const DAILY_CAP = premiumEntitlement ? 500 : 200
+            const walletDate = new Date()
+            walletDate.setHours(0, 0, 0, 0)
+
+            let coinsToAward = 0
+
+            // Check Daily Wallet
+            const wallet = await tx.dailyWallet.findUnique({
+                where: { userId_date: { userId, date: walletDate } }
+            })
+
+            let currentEarned = wallet ? wallet.earned : 0
+
+            if (currentEarned < DAILY_CAP) {
+                const space = DAILY_CAP - currentEarned
+                coinsToAward = Math.min(COIN_REWARD, space)
+            }
+
+            if (coinsToAward > 0) {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: { coins: { increment: coinsToAward } }
+                })
+
+                await tx.dailyWallet.upsert({
+                    where: { userId_date: { userId, date: walletDate } },
+                    update: { earned: { increment: coinsToAward } },
+                    create: { userId, date: walletDate, earned: coinsToAward }
+                })
+            }
+
+
             // --- Phase 9: Regional Ladder ---
             // Upsert ladder entry
             // Need Active Season
@@ -221,7 +265,8 @@ export async function POST(req: NextRequest) {
             xpEarned: xpGain,
             levelUp,
             promotion: promo.isNewDivision ? promo : null,
-            badgesEarned: newBadges
+            badgesEarned: newBadges,
+            coinsEarned: matchResult === 1 ? 10 : 0 // Simplified for response payload, actual logic in TX
         })
 
     } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any

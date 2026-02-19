@@ -57,6 +57,19 @@ model User {
   region        Region    @default(IN)
   qualifierEntries QualifierEntry[]
   globalFinalists GlobalFinalist[]
+  
+  // Monetization (Phase 10)
+  coins         Int       @default(0)
+  equippedAvatarSku     String?
+  equippedFrameSku      String?
+  equippedBackgroundSku String?
+  equippedEmoteSku      String?
+  
+  dailyWallets  DailyWallet[]
+  cosmetics     UserCosmetic[]
+  bpProgress    UserBattlePassProgress[]
+  entitlements  Entitlement[]
+  purchases     PurchaseLog[]
 }
 
 model PrivacyConsent {
@@ -458,3 +471,109 @@ model GlobalFinalist {
   @@index([globalFinalId, finalScore])
 }
 
+
+// --- PHASE 10: MONETIZATION & SCALE ---
+
+model DailyWallet {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime @db.Date
+  earned    Int      @default(0) // Daily earning cap tracking
+  spent     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, date])
+}
+
+model CosmeticItem {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  name        String
+  type        String   // "AVATAR" | "FRAME" | "BACKGROUND" | "EMOTE"
+  rarity      String   // "COMMON" | "RARE" | "EPIC" | "LEGENDARY"
+  coinCost    Int
+  isActive    Boolean  @default(true)
+  metadata    Json?    // e.g. { "assetUrl": "..." }
+  createdAt   DateTime @default(now())
+
+  ownedBy     UserCosmetic[]
+}
+
+model UserCosmetic {
+  id          String   @id @default(cuid())
+  userId      String
+  cosmeticId  String
+  ownedAt     DateTime @default(now())
+  
+  user        User         @relation(fields: [userId], references: [id])
+  cosmetic    CosmeticItem @relation(fields: [cosmeticId], references: [id])
+
+  @@unique([userId, cosmeticId])
+}
+
+model BattlePass {
+  id        String   @id @default(cuid())
+  seasonId  String   @unique // One BP per season generally
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  tiers     BattlePassTier[]
+  progress  UserBattlePassProgress[]
+}
+
+model BattlePassTier {
+  id           String     @id @default(cuid())
+  battlePassId String
+  tier         Int        // 1, 2, 3...
+  requiredXp   Int        // Cumulative or step
+  rewardType   String     // "COINS" | "COSMETIC"
+  rewardValue  String     // "100" or "avatar_robot_gold"
+  
+  battlePass   BattlePass @relation(fields: [battlePassId], references: [id])
+
+  @@unique([battlePassId, tier])
+}
+
+model UserBattlePassProgress {
+  id           String     @id @default(cuid())
+  userId       String
+  battlePassId String
+  xpEarned     Int        @default(0)
+  tierUnlocked Int        @default(0)
+  claimedTiers Json       @default("[]") // Array of tier numbers
+  updatedAt    DateTime   @updatedAt
+
+  user         User       @relation(fields: [userId], references: [id])
+  battlePass   BattlePass @relation(fields: [battlePassId], references: [id])
+
+  @@unique([userId, battlePassId])
+}
+
+model Entitlement {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "PREMIUM" | "FAMILY_PARENT" | "FAMILY_CHILD"
+  status    String   // "ACTIVE" | "INACTIVE"
+  startsAt  DateTime
+  endsAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, type, status])
+}
+
+model PurchaseLog {
+  id        String   @id @default(cuid())
+  userId    String
+  sku       String?  // Null if not a cosmetic (e.g. direct coin purchase)
+  costCoins Int
+  details   Json?
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id])
+}
