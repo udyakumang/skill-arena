@@ -47,7 +47,8 @@ export async function GET(req: NextRequest) {
             },
             orderBy: { rating: 'desc' },
             take: 5,
-            include: { user: { select: { name: true } } }
+            // @ts-ignore
+            include: { user: true }
         })
 
         // 2. Qualifier Status

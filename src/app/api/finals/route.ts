@@ -48,7 +48,7 @@ async function handleStart(body: any) {
     // Seed = FinalID (Same questions for all finalists!)
     const items = []
     const QUESTIONS_COUNT = 15
-    const seed = globalFinal.id
+    const seed = final.id
 
     for (let i = 1; i <= QUESTIONS_COUNT; i++) {
         const qSeed = `${seed}_final_q${i}`
@@ -85,7 +85,7 @@ async function handleSubmit(body: any) {
     // Score
     let score = 0
     const QUESTIONS_COUNT = 15
-    const seed = globalFinal.id
+    const seed = final.id
 
     for (let i = 1; i <= QUESTIONS_COUNT; i++) {
         const qSeed = `${seed}_final_q${i}`

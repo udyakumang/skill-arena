@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button' // Assuming exists or standard HTML button
-import { Input } from '@/components/ui/input'   // Assuming exists
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button' // Fixed casing
+import { Input } from '@/components/ui/Input'   // Fixed casing
 
 export default function ParentDashboard() {
     const [stats, setStats] = useState<any>(null)
@@ -86,7 +86,7 @@ export default function ParentDashboard() {
                         <Input
                             placeholder="Enter Child Link Code"
                             value={linkCode}
-                            onChange={(e) => setLinkCode(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLinkCode(e.target.value)}
                         />
                         {/* Debug Input for Parent ID since we don't have global auth context here easily */}
                         <Button onClick={handleLink} disabled={loading}>
