@@ -24,12 +24,20 @@ model User {
   toneProfile   String    @default("BALANCED") 
   avatarConfig  Json?     // { base: "robot", color: "blue", accessories: [] }
   
+  // Engagement & Retention
+  division      Division  @default(BRONZE)
+  xp            Int       @default(0)
+  level         Int       @default(1)
+  winStreak     Int       @default(0)
+  
   // Progression
   masteryStates MasteryState[]
   sessions      Session[]
   questState    UserQuestState?
   ladderEntries LadderEntry[]
   animationLogs AnimationUsageLog[]
+  dailyChallenges DailyChallengeLog[]
+  badges         UserBadge[]
   
   // Privacy & Consent
   consents      PrivacyConsent[]
@@ -105,9 +113,15 @@ model MasteryState {
   
   // Adaptive Learning State
   confidence      Float    @default(0) // 0-100 derived from speed/hesitation
-  streak          Int      @default(0) // Current streak
+  streak          Int      @default(0) // Current streak (session/local)
   currentDifficulty Float  @default(0) // The adaptive tracking value
   highestDifficultySolved Float @default(0) // Peak performance
+
+  // Engagement Fields
+  division        Division @default(BRONZE)
+  winStreak       Int      @default(0) // Global/Ranked Persistence
+  bestWinStreak   Int      @default(0)
+  lastMatchAt     DateTime?
 
   visibleTier     MasteryTier @default(NOVICE)
   
@@ -258,4 +272,48 @@ enum League {
   PLATINUM
   DIAMOND
   ELITE
+}
+
+// --- ENGAGEMENT & RETENTION (PHASE 7) ---
+
+enum Division {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  MASTER
+}
+
+model DailyChallengeLog {
+  id        String    @id @default(cuid())
+  userId    String
+  skillId   String
+  score     Int       // 0-10 or percentage
+  completed Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model Badge {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String
+  type        String    // e.g. "ACHIEVEMENT", "MILESTONE"
+  icon        String?
+  
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id        String    @id @default(cuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime  @default(now())
+  
+  user      User      @relation(fields: [userId], references: [id])
+  badge     Badge     @relation(fields: [badgeId], references: [id])
+  
+  @@unique([userId, badgeId])
 }

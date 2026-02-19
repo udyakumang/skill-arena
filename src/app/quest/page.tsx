@@ -69,7 +69,11 @@ export default function QuestPage() {
     // Re-focus input when item changes or feedback clears
     useEffect(() => {
         if (!feedback && item && !loading) {
-            inputRef.current?.focus()
+            // Small delay to ensure disabled attribute is removed from DOM before focusing
+            const timer = setTimeout(() => {
+                inputRef.current?.focus()
+            }, 10)
+            return () => clearTimeout(timer)
         }
     }, [item, feedback, loading])
 
@@ -198,7 +202,12 @@ export default function QuestPage() {
                     className="flex-1 bg-slate-700 rounded-xl px-6 py-4 text-2xl text-center outline-none focus:ring-2 ring-yellow-500 transition-all"
                     placeholder="Type answer..."
                     disabled={loading || !!feedback}
-                    onKeyDown={e => e.key === 'Enter' && submitAnswer()}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault()
+                            submitAnswer()
+                        }
+                    }}
                     autoComplete="off"
                     autoFocus
                 />

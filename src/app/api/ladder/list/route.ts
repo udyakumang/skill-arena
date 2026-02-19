@@ -43,7 +43,11 @@ export async function GET(req: NextRequest) {
                 cr: true,
                 countryCode: true,
                 avatarConfig: true,
-                // We could derive League from CR dynamically here
+                // New Fields
+                division: true,
+                winStreak: true,
+                level: true,
+                xp: true
             }
         })
 
@@ -51,7 +55,9 @@ export async function GET(req: NextRequest) {
         const safeBoard = leaderboard.map((u: any, index: number) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
             rank: index + 1,
             ...u,
-            league: getLeagueFromCR(u.cr)
+            // Fallback to CR-based calculation if division is null (migration pending)
+            // But ideally we use u.division
+            league: u.division || getLeagueFromCR(u.cr)
         }))
 
         const response = {

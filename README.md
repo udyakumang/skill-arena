@@ -48,3 +48,12 @@ We are building a system where learning feels like a sport.
 - `src/core`: **The Brain**. Domain logic for mastery, rating, and adaptive difficulty.
 - `src/app`: **The Body**. Next.js routes and pages.
 - `src/components`: **The Face**. UI and animations.
+
+## Phase 7: Division & Engagement System
+We have introduced a retention engine to make learning addictive:
+- **Divisions**: Bronze to Master, based on Competitve Rating (CR).
+- **XP & Levels**: Earn XP for every action, level up to unlock prestige.
+- **Daily Challenges**: Deterministic daily problem sets for bonus rewards.
+- **Streaks**: Maintain your momentum or lose it.
+- **Badges**: Earn recognition for milestones and achievements.
+
