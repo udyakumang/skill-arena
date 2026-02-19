@@ -98,6 +98,35 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // 7. Update Assignment Progress (Phase 13)
+        if (session.assignmentId) {
+            const progress = await db.assignmentProgress.findUnique({
+                where: { assignmentId_studentUserId: { assignmentId: session.assignmentId, studentUserId: session.userId } },
+                include: { assignment: true }
+            })
+
+            if (progress && progress.status !== 'COMPLETED') {
+                // Check completion criteria
+                // For MVP: If mastery > minMastery OR score > threshold. 
+                // Let's use simple logic: If isCorrect and mastery score > 80 (or assignment minMastery), mark complete.
+                // Or just track attempts.
+
+                const minMastery = progress.assignment.minMastery || 80
+                const isComplete = nextState.score >= minMastery
+
+                await db.assignmentProgress.update({
+                    where: { id: progress.id },
+                    data: {
+                        attempts: { increment: 1 },
+                        bestScore: Math.max(progress.bestScore, Math.round(nextState.score)),
+                        status: isComplete ? 'COMPLETED' : 'IN_PROGRESS',
+                        completedAt: isComplete ? new Date() : null,
+                        updatedAt: new Date()
+                    }
+                })
+            }
+        }
+
         // 4. Animation Selection
         const animation = selectAnimation({
             context: isCorrect ? 'CORRECT' : 'WRONG',

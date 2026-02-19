@@ -11,6 +11,8 @@ function PlayContent() {
     const userId = searchParams.get('userId')
     const mode = searchParams.get('mode') || 'PRACTICE'
 
+    const assignmentId = searchParams.get('assignmentId')
+
     // State
     const [started, setStarted] = useState(false)
     const [sessionId, setSessionId] = useState<string | null>(null)
@@ -37,7 +39,7 @@ function PlayContent() {
             const res = await fetch('/api/session/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, type: mode })
+                body: JSON.stringify({ userId, type: mode, assignmentId })
             })
             const data = await res.json()
             if (data.error) throw new Error(data.error)

@@ -70,6 +70,11 @@ model User {
   bpProgress    UserBattlePassProgress[]
   entitlements  Entitlement[]
   purchases     PurchaseLog[]
+
+  // Schools (Phase 13)
+  taughtClassrooms Classroom[] @relation("TeacherClassrooms")
+  joinedClassrooms ClassroomStudent[]
+  assignmentProgress AssignmentProgress[]
 }
 
 model PrivacyConsent {
@@ -222,6 +227,10 @@ model Session {
   
   items       SessionItem[]
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Phase 13
+  assignmentId String?
+  assignment   Assignment? @relation(fields: [assignmentId], references: [id])
 }
 
 enum SessionType {
@@ -586,4 +595,87 @@ model IdempotencyKey {
   createdAt DateTime @default(now())
 
   @@unique([userId, key, route])
+}
+
+// --- PHASE 13: SCHOOLS & ASSIGNMENTS ---
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  country   String?
+  region    Region?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  classrooms Classroom[]
+}
+
+model Classroom {
+  id            String   @id @default(cuid())
+  schoolId      String
+  name          String
+  grade         String?
+  teacherUserId String
+  joinCode      String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  school        School   @relation(fields: [schoolId], references: [id])
+  students      ClassroomStudent[]
+  assignments   Assignment[]
+  
+  // No direct relation to User for teacher to keep schema clean, 
+  // but teacherUserId logic will be enforced in API level or we can add relation if needed.
+  // For strictness let's add it if User model allows, but User model is already huge.
+  // Sticking to ID for now to avoid circular dependency hell in strict TS if not careful,
+  // but actually standard Prisma relation is better. Let's add it to User too.
+  teacher       User     @relation("TeacherClassrooms", fields: [teacherUserId], references: [id])
+}
+
+model ClassroomStudent {
+  id            String   @id @default(cuid())
+  classroomId   String
+  studentUserId String
+  addedAt       DateTime @default(now())
+
+  classroom     Classroom @relation(fields: [classroomId], references: [id])
+  student       User      @relation(fields: [studentUserId], references: [id])
+
+  @@unique([classroomId, studentUserId])
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  classroomId String
+  title       String
+  skillId     String
+  mode        String   // "PRACTICE" | "MASTERY" | "RANKED_SIM"
+  targetTier  MasteryTier? 
+  minMastery  Int?
+  dueAt       DateTime?
+  createdAt   DateTime @default(now())
+  createdBy   String   // teacherUserId
+
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  progress    AssignmentProgress[]
+  sessions    Session[]
+
+  @@index([classroomId, skillId])
+}
+
+model AssignmentProgress {
+  id            String   @id @default(cuid())
+  assignmentId  String
+  studentUserId String
+  status        String   // "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "OVERDUE"
+  attempts      Int      @default(0)
+  bestScore     Int      @default(0)
+  completedAt   DateTime?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  assignment    Assignment @relation(fields: [assignmentId], references: [id])
+  student       User       @relation(fields: [studentUserId], references: [id])
+
+  @@unique([assignmentId, studentUserId])
 }

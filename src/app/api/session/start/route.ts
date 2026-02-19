@@ -7,42 +7,61 @@ import { logger } from '@/lib/logger' // NEW
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
-        const { userId, type = 'PRACTICE', skillId } = body
+        const { userId, type = 'PRACTICE', skillId, assignmentId } = body
 
         if (!userId) {
             logger.warn('Session start blocked (Missing User)', 'Session', { body })
             return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
         }
 
-        logger.info('Session start request', 'Session', { userId, type, skillId })
+        // Assignment Logic
+        let targetSkill = skillId || 'math-add-1'
+        let finalAssignmentId = assignmentId
+
+        if (assignmentId) {
+            const assignment = await db.assignment.findUnique({ where: { id: assignmentId } })
+            if (assignment) {
+                targetSkill = assignment.skillId
+                // Ensure progress record exists
+                await db.assignmentProgress.upsert({
+                    where: { assignmentId_studentUserId: { assignmentId, studentUserId: userId } },
+                    create: { assignmentId, studentUserId: userId, status: 'IN_PROGRESS' },
+                    update: { status: 'IN_PROGRESS', updatedAt: new Date() }
+                })
+            } else {
+                finalAssignmentId = undefined // Invalid assignment
+            }
+        }
+
+        logger.info('Session start request', 'Session', { userId, type, skillId: targetSkill, assignmentId: finalAssignmentId })
 
         // 1. Create Session
         const session = await db.session.create({
             data: {
                 userId,
                 type,
+                assignmentId: finalAssignmentId,
                 startTime: new Date(),
             }
         })
 
         // 2. Generate Initial Item
-        // For Diagnostic: Pick simple starter from skillId or default
-        const targetSkill = skillId || 'math-add-1'
         const content = generateContent({
             skillId: targetSkill,
-            difficulty: 1,
+            difficulty: 1, // Should fetch from MasteryState ideally
             tone: 'BALANCED',
             ageBand: '6-8'
         })
 
+        // ... rest stays same
         const item = await db.sessionItem.create({
             data: {
                 sessionId: session.id,
                 skillId: targetSkill,
-                question: content.question as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+                question: content.question as any,
                 correctAnswer: content.correctAnswer,
                 difficulty: content.difficulty,
-                isCorrect: false // default, updated on submit
+                isCorrect: false
             }
         })
 
@@ -54,7 +73,7 @@ export async function POST(req: NextRequest) {
                 hints: content.hints
             }
         })
-    } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
         logger.error('Session start failed', 'Session', e)
         return NextResponse.json({ error: e.message }, { status: 500 })
     }
