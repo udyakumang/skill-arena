@@ -32,3 +32,35 @@ It enforces strict mastery (Math first) using a deterministic generator, adaptiv
 ## Testing
 - valid: `npm run lint`
 - test: `npm test`
+
+## Phase 11: Offline-First PWA & Sync Strategy
+
+### 1. Local Content Engine
+- **Purpose**: Generates questions/challenges deterministically on the client without internet or LLM access.
+- **Mechanism**:
+    - `src/core/localContentEngine/engine.ts`: Main engine.
+    - `Blueprints`: Templates for questions (e.g., Math Addition, Logic Puzzles).
+    - `SeededSampler`: Ensures the same seed produces the same content, crucial for anti-cheat and replayability.
+    - **Usage**: `localEngine.generateContent(skillId, difficulty, seed)`
+
+### 2. Offline Queue (Idempotency)
+- **Purpose**: Ensures critical user actions (purchases, submissions) are not lost when offline.
+- **Mechanism**:
+    - `src/lib/api-client.ts`: Wraps `fetch`. Intercepts POST requests when offline.
+    - `src/lib/offline-sync/queue.ts`: Persists requests to IndexedDB.
+    - `src/lib/offline-sync/storage.ts`: IndexedDB wrapper.
+    - **Replay**: Auto-replays queued requests when `navigator.onLine` becomes true or via manual "Sync Now" button.
+    - **Safety**: Uses `idempotencyKey` to prevent duplicate processing on server (handled by `src/lib/idempotency.ts` and middleware).
+
+### 3. Sync Protocol
+- **Push**: `POST /api/sync/push`
+    - Client sends local state changes (completed levels, coins spent locally).
+    - Server merges with simple "Server Wins" or "Max Value" strategy (e.g., for high scores).
+- **Pull**: `GET /api/sync/pull`
+    - Client fetches latest server state on load/online.
+    - Hydrates local Redux/Context state.
+
+### 4. PWA Features
+- **Manifest**: `public/manifest.json` for installability.
+- **Service Worker**: `public/sw.js` (Workbox) caches App Shell and API GET requests.
+- **UI**: `OfflineIndicator` and `SyncStatus` components provide real-time feedback.

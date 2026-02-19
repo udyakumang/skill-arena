@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
+import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
+import { SyncStatus } from "@/components/pwa/SyncStatus";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +31,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ServiceWorkerRegister />
+        <OfflineIndicator />
+        <SyncStatus />
+        <InstallPrompt />
         {children}
       </body>
     </html>

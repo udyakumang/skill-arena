@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Navbar } from '@/components/landing/Navbar'
+import { apiClient } from '@/lib/api-client'
 
 import { Suspense } from 'react'
 
@@ -20,8 +21,7 @@ function ArenaContent() {
             return
         }
 
-        fetch(`/api/arena/overview?userId=${userId}`)
-            .then(res => res.json())
+        apiClient.get(`/api/arena/overview?userId=${userId}`)
             .then(d => {
                 setData(d)
                 setLoading(false)

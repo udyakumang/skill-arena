@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Navbar } from '@/components/landing/Navbar'
+import { apiClient } from '@/lib/api-client'
 
 import { Suspense } from 'react'
 
@@ -58,18 +59,26 @@ function FinalsContent() {
         }
     }
 
+    const fetchLeaderboard = async () => {
+        try {
+            const res = await fetch(`/api/finals?globalFinalId=${finalId}`)
+            const data = await res.json()
+            setLeaderboard(data.leaderboard || [])
+        } catch (e) { }
+    }
+
     const submitFinals = async () => {
         setStatus('SUBMITTING')
         try {
-            const res = await fetch('/api/finals', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'SUBMIT', userId, globalFinalId: finalId, answers })
-            })
-            const data = await res.json()
+            const data = await apiClient.post('/api/finals', { action: 'SUBMIT', userId, globalFinalId: finalId, answers })
+
             if (data.error) throw new Error(data.error)
 
-            setScore(data.score)
+            if (data.__queued) {
+                alert("Finals submitted to offline queue.")
+            }
+
+            setScore(data.score || 0)
             setStatus('RESULT')
             fetchLeaderboard()
         } catch (e: any) {
@@ -78,13 +87,6 @@ function FinalsContent() {
         }
     }
 
-    const fetchLeaderboard = async () => {
-        try {
-            const res = await fetch(`/api/finals?globalFinalId=${finalId}`)
-            const data = await res.json()
-            setLeaderboard(data.leaderboard || [])
-        } catch (e) { }
-    }
 
     if (status === 'LOADING') return <div className="text-yellow-500 p-8">Loading Finals...</div>
     if (status === 'ERROR') return <div className="text-red-400 p-8">Error: {error}</div>

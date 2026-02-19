@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Navbar } from '@/components/landing/Navbar'
+import { apiClient } from '@/lib/api-client'
 
 import { Suspense } from 'react'
 
@@ -59,18 +60,25 @@ function QualifierContent() {
         }
     }
 
+    const fetchLeaderboard = async () => {
+        try {
+            const res = await fetch(`/api/qualifier?qualifierId=${qualifierId}`)
+            const data = await res.json()
+            setLeaderboard(data.leaderboard || [])
+        } catch (e) { }
+    }
+
     const submitQualifier = async () => {
         setStatus('SUBMITTING')
         try {
-            const res = await fetch('/api/qualifier', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'SUBMIT', userId, qualifierId, answers })
-            })
-            const data = await res.json()
+            const data = await apiClient.post('/api/qualifier', { action: 'SUBMIT', userId, qualifierId, answers })
             if (data.error) throw new Error(data.error)
 
-            setScore(data.score)
+            if (data.__queued) {
+                alert("Qualifier submitted to offline queue.")
+            }
+
+            setScore(data.score || 0) // Handle pending score
             setStatus('RESULT')
             fetchLeaderboard()
         } catch (e: any) {
@@ -79,13 +87,6 @@ function QualifierContent() {
         }
     }
 
-    const fetchLeaderboard = async () => {
-        try {
-            const res = await fetch(`/api/qualifier?qualifierId=${qualifierId}`)
-            const data = await res.json()
-            setLeaderboard(data.leaderboard || [])
-        } catch (e) { }
-    }
 
     if (status === 'LOADING') return <div className="text-white p-8">Loading...</div>
     if (status === 'ERROR') return <div className="text-red-400 p-8">Error: {error}</div>

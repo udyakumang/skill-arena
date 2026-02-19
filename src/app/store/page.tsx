@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Navbar } from '@/components/landing/Navbar'
 import { Lock, ShoppingCart } from 'lucide-react'
+import { apiClient } from '@/lib/api-client'
 
 interface StoreItem {
     id: string
@@ -49,14 +50,11 @@ function StoreContent() {
         if (!userId) return alert("Log in to buy")
         setPurchasing(sku)
         try {
-            const res = await fetch('/api/store/buy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, sku })
-            })
-            const data = await res.json()
+            const data = await apiClient.post('/api/store/buy', { userId, sku })
             if (data.error) {
                 alert(data.error)
+            } else if (data.__queued) {
+                alert("You are offline. Purchase queued and will process when online.")
             } else {
                 alert(`Purchased ${sku}! Remaining: ${data.remainingCoins}`)
                 setBalance(data.remainingCoins)

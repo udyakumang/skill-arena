@@ -577,3 +577,13 @@ model PurchaseLog {
   
   user      User     @relation(fields: [userId], references: [id])
 }
+
+model IdempotencyKey {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  route     String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, key, route])
+}

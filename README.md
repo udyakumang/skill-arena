@@ -57,3 +57,13 @@ We have introduced a retention engine to make learning addictive:
 - **Streaks**: Maintain your momentum or lose it.
 - **Badges**: Earn recognition for milestones and achievements.
 
+## Phase 8: Parent Dashboard
+- **Linking**: Parents can link child accounts via code.
+- **Analytics**: View skill progression, weak areas, and safety alerts.
+- **Safety**: Automated monitoring for PII and profanity.
+
+## Phase 11: Offline-First PWA
+- **Local Engine**: Play without internet using deterministic content generation.
+- **Offline Queue**: Progress and purchases are saved locally and synced when online.
+- **Installable**: Add to home screen via PWA manifest.
+

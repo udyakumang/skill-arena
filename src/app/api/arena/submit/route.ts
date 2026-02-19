@@ -5,9 +5,19 @@ import { checkPromotion } from '@/core/division'
 import { calculateLevel, XP_EVENTS } from '@/core/xp'
 import { checkBadgeUnlocks, BADGES } from '@/core/gamification'
 
+import { checkIdempotency } from '@/lib/idempotency'
+
 export async function POST(req: NextRequest) {
     try {
         const { sessionId, userId } = await req.json()
+
+        const idempotencyKey = req.headers.get('x-idempotency-key')
+        if (idempotencyKey) {
+            const isNew = await checkIdempotency(userId, idempotencyKey, '/api/arena/submit')
+            if (!isNew) {
+                return NextResponse.json({ error: "Duplicate request ignored" }, { status: 409 })
+            }
+        }
 
         // 1. Get Session & User
         const session = await db.session.findUnique({
