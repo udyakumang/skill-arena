@@ -73,8 +73,8 @@ async function runTest() {
         console.log("   Entry created:", entry.id)
 
         // Generate Content Check
-        const q1 = generateContent({ skillId: 'math-add-1', difficulty: 1, seed: `${qualifierId}_q1` })
-        const q1_again = generateContent({ skillId: 'math-add-1', difficulty: 1, seed: `${qualifierId}_q1` })
+        const q1 = generateContent({ skillId: 'math-add-1', difficulty: 1, seed: `${qualifierId}_q1`, tone: 'BALANCED', ageBand: '10-12' })
+        const q1_again = generateContent({ skillId: 'math-add-1', difficulty: 1, seed: `${qualifierId}_q1`, tone: 'BALANCED', ageBand: '10-12' })
         if (q1.question !== q1_again.question) throw new Error("Determinism failed")
         console.log("   Determinism verified.")
 

@@ -22,11 +22,11 @@ export async function GET(req: NextRequest) {
         })
 
         // 1. Total Attempts
-        const totalAttempts = aggregates.reduce((sum: number, agg) => sum + agg.attempts, 0)
+        const totalAttempts = aggregates.reduce((sum: number, agg: any) => sum + agg.attempts, 0)
 
         // 2. Accuracy Trend (Group by Date)
         const dateMap = new Map<string, { attempts: number, correct: number }>()
-        aggregates.forEach(agg => {
+        aggregates.forEach((agg: any) => {
             const d = agg.date.toISOString().split('T')[0]
             if (!dateMap.has(d)) dateMap.set(d, { attempts: 0, correct: 0 })
             const entry = dateMap.get(d)!
@@ -41,10 +41,10 @@ export async function GET(req: NextRequest) {
 
         // 3. Improvement Highlights (Highest Delta)
         const improvements = aggregates
-            .filter((a) => a.masteryDelta > 0)
-            .sort((a, b) => b.masteryDelta - a.masteryDelta)
+            .filter((a: any) => a.masteryDelta > 0)
+            .sort((a: any, b: any) => b.masteryDelta - a.masteryDelta)
             .slice(0, 5)
-            .map((a) => ({
+            .map((a: any) => ({
                 skill: a.skill.name,
                 delta: a.masteryDelta,
                 date: a.date
