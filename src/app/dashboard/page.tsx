@@ -1,197 +1,172 @@
 'use client'
 
-import React, { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import React, { Suspense, useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { DashboardNavbar } from '@/components/dashboard/DashboardNavbar'
 import { Button } from '@/components/ui/Button'
-import { SkillTree } from '@/components/dashboard/SkillTree'
+import { Zap, Swords, ShoppingBag, Trophy, Flame, Target, ChevronRight } from 'lucide-react'
+import { apiClient } from '@/lib/api-client'
 
 function DashboardContent() {
-    const searchParams = useSearchParams()
     const router = useRouter()
+    const searchParams = useSearchParams()
     const userId = searchParams.get('userId')
+    const [user, setUser] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
 
-    // State
-    const [started, setStarted] = useState(false)
-    const [sessionId, setSessionId] = useState<string | null>(null)
-    const [item, setItem] = useState<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
-    const [answer, setAnswer] = useState('')
-    const [feedback, setFeedback] = useState<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
-    const [loading, setLoading] = useState(false)
+    const href = (path: string) => userId ? `${path}?userId=${userId}` : path
 
-    // Redirect if no user
     useEffect(() => {
         if (!userId) {
             router.push('/login')
+            return
         }
+
+        // Fetch User Data
+        // Ideally we have a dedicated dashboard endpoint, for now we can chain or use what we have
+        // Let's rely on stored stats or fetch profile.
+        // Mocking structure for now based on what we expect
+        // In real app we would start fetching /api/arena/overview or /api/user/me
+
+        apiClient.get(`/api/arena/overview?userId=${userId}`)
+            .then(data => {
+                setUser(data)
+                setLoading(false)
+            })
+            .catch(err => {
+                console.error(err)
+                setLoading(false)
+            })
+
     }, [userId, router])
-
-    // Start Session
-    const startSession = async () => {
-        setLoading(true)
-        try {
-            const res = await fetch('/api/session/start', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, type: 'PRACTICE' })
-            })
-            const data = await res.json()
-            if (data.error) throw new Error(data.error)
-
-            setSessionId(data.sessionId)
-            setItem(data.item)
-            setStarted(true)
-        } catch (e) {
-            console.error(e)
-            alert('Failed to start session')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    // Submit Answer
-    const submitAnswer = async () => {
-        if (!item || !sessionId) return
-
-        const res = await fetch('/api/session/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                sessionId,
-                itemId: item.id,
-                userAnswer: answer,
-                timeTakenMs: 2000,
-                hintsUsed: 0
-            })
-        })
-        const data = await res.json()
-        setFeedback(data)
-
-        // Auto-advance faster
-        setTimeout(() => {
-            if (data.nextItem) {
-                setItem(data.nextItem)
-                setAnswer('')
-                setFeedback(null)
-            }
-        }, 1000) // Reduced from 2000ms to 1000ms for snappier feel
-    }
 
     if (!userId) return null
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white flex">
-            {/* Sidebar */}
-            <SkillTree />
+        <div className="min-h-screen bg-slate-950 text-white pb-20 md:pb-0 pt-0 md:pt-20">
+            <DashboardNavbar />
 
-            {/* Main Content */}
-            <div className="flex-1 p-4 md:p-8 max-h-screen overflow-y-auto">
-                <div className="max-w-4xl mx-auto">
-                    <header className="flex justify-between items-center mb-12">
+            <main className="container mx-auto px-4 py-8 max-w-6xl space-y-8">
+
+                {/* Welcome & Stats Row */}
+                <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="col-span-2 md:col-span-1 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-6 flex flex-col justify-between shadow-lg shadow-indigo-500/20">
                         <div>
-                            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-pink-400">
-                                Skill Arena
-                            </h1>
-                            <div className="text-sm text-slate-500">Daily Diagnostic</div>
+                            <div className="text-indigo-200 text-sm font-medium mb-1">Current Level</div>
+                            <div className="text-3xl font-bold text-white">Lvl {user?.user?.level || 1}</div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="text-right hidden sm:block">
-                                <div className="text-sm font-bold text-white">{userId.split('-')[0]}</div>
-                                <div className="text-xs text-slate-400">Level 1 Novice</div>
+                        <div className="mt-4">
+                            <div className="w-full h-1 bg-black/20 rounded-full overflow-hidden">
+                                <div className="h-full bg-white/80 w-[45%]" />
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-lg">
-                                👤
-                            </div>
+                            <div className="text-xs text-indigo-200 mt-1">450 / 1000 XP</div>
                         </div>
-                    </header>
+                    </div>
 
-                    {!started ? (
-                        <div className="glass-card p-10 rounded-2xl text-center max-w-lg mx-auto mt-20">
-                            <div className="w-20 h-20 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl animate-pulse">
-                                ⚔️
+                    <div className="glass-card p-6 rounded-2xl flex flex-col justify-center items-center text-center">
+                        <div className="w-10 h-10 bg-yellow-500/10 rounded-full flex items-center justify-center mb-2">
+                            <Flame className="w-6 h-6 text-yellow-500" />
+                        </div>
+                        <div className="text-2xl font-bold text-white">{user?.user?.winStreak || 0}</div>
+                        <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Day Streak</div>
+                    </div>
+
+                    <div className="glass-card p-6 rounded-2xl flex flex-col justify-center items-center text-center">
+                        <div className="w-10 h-10 bg-pink-500/10 rounded-full flex items-center justify-center mb-2">
+                            <Trophy className="w-6 h-6 text-pink-500" />
+                        </div>
+                        <div className="text-2xl font-bold text-white">{user?.ladder?.myEntry?.rating || 1000}</div>
+                        <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Skill Rating</div>
+                    </div>
+
+                    <div className="glass-card p-6 rounded-2xl flex flex-col justify-center items-center text-center">
+                        <div className="w-10 h-10 bg-amber-500/10 rounded-full flex items-center justify-center mb-2">
+                            <div className="text-xl">🪙</div>
+                        </div>
+                        <div className="text-2xl font-bold text-white">{user?.user?.coins || 0}</div>
+                        <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Coins</div>
+                    </div>
+                </section>
+
+                {/* Hero: Daily Quest */}
+                <section className="glass-card p-8 rounded-3xl border border-slate-800 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                        <Target className="w-48 h-48" />
+                    </div>
+                    <div className="relative z-10">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white mb-2">Daily Quest</h2>
+                                <p className="text-slate-400">Complete your daily training to keep your streak alive.</p>
                             </div>
-                            <h2 className="text-3xl font-bold mb-4">Ready to Train?</h2>
-                            <p className="text-slate-400 mb-8">
-                                Your daily quest awaits. We&apos;ll start with a diagnostic to calibrate your cognitive load.
-                            </p>
-                            <Button size="lg" onClick={startSession} disabled={loading} className="w-full">
-                                {loading ? 'Entering Arena...' : 'Start Practice Session'}
+                            <div className="bg-slate-900 px-3 py-1 rounded-lg text-xs font-mono text-slate-400 border border-slate-800">
+                                12h 45m left
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 mb-8">
+                            {[
+                                { name: "Warmup: 10 Quick Math", done: true },
+                                { name: "Core: Algebra Basics", done: false },
+                                { name: "Challenge: Beat a Global Ghost", done: false }
+                            ].map((task, i) => (
+                                <div key={i} className="flex items-center gap-4">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border ${task.done ? 'bg-green-500 border-green-500' : 'border-slate-600'}`}>
+                                        {task.done && <span className="text-black font-bold text-xs">✓</span>}
+                                    </div>
+                                    <span className={task.done ? 'text-slate-500 line-through' : 'text-white'}>{task.name}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <Link href={href('/play')}>
+                            <Button size="lg" className="bg-white text-black hover:bg-slate-200">
+                                Continue Quest <ChevronRight className="w-4 h-4 ml-1" />
                             </Button>
-                        </div>
-                    ) : (
-                        <div className="max-w-2xl mx-auto space-y-8 mt-10">
-                            {/* Progress Header */}
-                            <div className="flex justify-between items-center text-sm text-slate-400 px-2">
-                                <div>Topic: <span className="text-indigo-400 font-bold">Addition (1-10)</span></div>
-                                <div>Streak: 🔥 1</div>
-                            </div>
+                        </Link>
+                    </div>
+                </section>
 
-                            {/* Game Card */}
-                            <div className="glass-card p-12 rounded-3xl relative overflow-hidden min-h-[400px] flex flex-col items-center justify-center text-center ring-1 ring-white/10 shadow-2xl shadow-indigo-500/10">
-                                {feedback ? (
-                                    <div className="space-y-4 animate-in fade-in zoom-in duration-300">
-                                        <div className="text-8xl mb-4">
-                                            {feedback.result.isCorrect ? '✨' : '🛡️'}
-                                        </div>
-                                        <div className="text-2xl font-bold text-white">
-                                            {feedback.result.isCorrect ? 'Brilliant!' : 'Keep going!'}
-                                        </div>
-                                        <div className="text-indigo-300">
-                                            {feedback.animation?.layers?.character || "Correct!"}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                        <div className="text-slate-500 text-sm tracking-[0.2em] uppercase font-bold">
-                                            Solve
-                                        </div>
-                                        <h2 className="text-6xl md:text-7xl font-bold text-white font-mono tracking-tighter">
-                                            {item?.question}
-                                        </h2>
-                                    </div>
-                                )}
-                            </div>
+                {/* Feature Grid */}
+                <section>
+                    <h3 className="text-lg font-bold text-slate-400 mb-6">Explore Arena</h3>
+                    <div className="grid md:grid-cols-3 gap-6">
 
-                            {/* Input Controls */}
-                            <form
-                                onSubmit={(e) => {
-                                    e.preventDefault()
-                                    if (answer && !feedback) submitAnswer()
-                                }}
-                                className="flex gap-4 max-w-md mx-auto"
-                            >
-                                <input
-                                    type="text"
-                                    value={answer}
-                                    onChange={(e) => setAnswer(e.target.value)}
-                                    className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-6 py-4 text-2xl text-center outline-none focus:ring-2 ring-indigo-500 text-white placeholder-slate-600 font-mono"
-                                    placeholder="?"
-                                    disabled={!!feedback}
-                                    autoFocus
-                                />
-                                <Button
-                                    type="submit"
-                                    disabled={!answer || !!feedback}
-                                    size="lg"
-                                    className="px-8 text-xl"
-                                >
-                                    Submit
-                                </Button>
-                            </form>
-
-                            <div className="text-center text-xs text-slate-600">
-                                Press <span className="font-mono bg-slate-800 px-1 rounded">Enter</span> to submit
+                        <Link href={href('/play?mode=PRACTICE')} className="glass-card p-6 rounded-2xl hover:bg-slate-800/80 transition-colors group">
+                            <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <Zap className="w-6 h-6 text-blue-400" />
                             </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+                            <h4 className="text-xl font-bold mb-2">Practice</h4>
+                            <p className="text-sm text-slate-400">Infinite training with adaptive difficulty. No pressure.</p>
+                        </Link>
+
+                        <Link href={href('/arena')} className="glass-card p-6 rounded-2xl hover:bg-slate-800/80 transition-colors group">
+                            <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <Swords className="w-6 h-6 text-pink-400" />
+                            </div>
+                            <h4 className="text-xl font-bold mb-2">Ranked Arena</h4>
+                            <p className="text-sm text-slate-400">Compete for glory in regional leagues and qualifiers.</p>
+                        </Link>
+
+                        <Link href={href('/store')} className="glass-card p-6 rounded-2xl hover:bg-slate-800/80 transition-colors group">
+                            <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <ShoppingBag className="w-6 h-6 text-amber-400" />
+                            </div>
+                            <h4 className="text-xl font-bold mb-2">Item Store</h4>
+                            <p className="text-sm text-slate-400">Spend your coins on avatars, frames, and boosters.</p>
+                        </Link>
+
+                    </div>
+                </section>
+            </main>
         </div>
     )
 }
 
 export default function DashboardPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading Arena...</div>}>
+        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading Dashboard...</div>}>
             <DashboardContent />
         </Suspense>
     )

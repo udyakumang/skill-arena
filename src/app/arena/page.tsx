@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
-import { Navbar } from '@/components/landing/Navbar'
+import { DashboardNavbar } from '@/components/dashboard/DashboardNavbar'
 import { apiClient } from '@/lib/api-client'
 
 import { Suspense } from 'react'
@@ -51,8 +51,8 @@ function ArenaContent() {
     if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading Arena...</div>
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white">
-            <Navbar />
+        <div className="min-h-screen bg-slate-950 text-white pb-20 md:pb-0 pt-0 md:pt-20">
+            <DashboardNavbar />
 
             <div className="max-w-6xl mx-auto px-4 py-12">
                 <header className="mb-12 text-center">
