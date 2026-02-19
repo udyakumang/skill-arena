@@ -32,16 +32,16 @@ export async function GET(req: Request) {
             }
         })
 
-        const assignmentStats = assignments.map(a => ({
+        const assignmentStats = assignments.map((a: any) => ({
             id: a.id,
             title: a.title,
             totalStudents: students.length,
-            completed: a.progress.filter(p => p.status === 'COMPLETED').length,
-            inProgress: a.progress.filter(p => p.status === 'IN_PROGRESS').length
+            completed: a.progress.filter((p: any) => p.status === 'COMPLETED').length,
+            inProgress: a.progress.filter((p: any) => p.status === 'IN_PROGRESS').length
         }))
 
         // 3. Weak Skills (Aggregate from DailySkillAggregate for these students)
-        const studentIds = students.map(s => s.student.id)
+        const studentIds = students.map((s: any) => s.student.id)
 
         // This query might be heavy, for MVP we do a simple aggregation of recent fails
         // In real app, offload to analytics dedicated table
@@ -64,13 +64,13 @@ export async function GET(req: Request) {
 
         // Hydrate skill names (Mock for now or fetch if we had Skill table populated)
         // Since Skill is a model but we might not have all seeds, let's just return IDs
-        const weakSkills = weakSkillsRaw.map(ws => ({
+        const weakSkills = weakSkillsRaw.map((ws: any) => ({
             skillId: ws.skillId,
             failCount: ws._count._all
         }))
 
         return NextResponse.json({
-            roster: students.map(s => s.student),
+            roster: students.map((s: any) => s.student),
             assignments: assignmentStats,
             weakSkills
         })

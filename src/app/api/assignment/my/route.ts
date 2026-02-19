@@ -36,7 +36,7 @@ export async function GET(req: Request) {
         })
 
         // Transform to cleaner shape
-        const result = assignments.map(a => ({
+        const result = assignments.map((a: any) => ({
             ...a,
             status: a.progress[0]?.status || 'NOT_STARTED',
             bestScore: a.progress[0]?.bestScore || 0,
