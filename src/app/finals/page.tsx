@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Navbar } from '@/components/landing/Navbar'
 
-export default function FinalsPage() {
+import { Suspense } from 'react'
+
+function FinalsContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const userId = searchParams.get('userId')
@@ -193,5 +195,13 @@ export default function FinalsPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function FinalsPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>}>
+            <FinalsContent />
+        </Suspense>
     )
 }

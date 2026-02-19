@@ -15,7 +15,9 @@ interface StoreItem {
     coinCost: number
 }
 
-export default function StorePage() {
+import { Suspense } from 'react'
+
+function StoreContent() {
     const searchParams = useSearchParams()
     const userId = searchParams.get('userId')
     const [items, setItems] = useState<StoreItem[]>([])
@@ -119,5 +121,13 @@ export default function StorePage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function StorePage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>}>
+            <StoreContent />
+        </Suspense>
     )
 }

@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Navbar } from '@/components/landing/Navbar'
 
-export default function ProfilePage() {
+import { Suspense } from 'react'
+
+function ProfileContent() {
     const searchParams = useSearchParams()
     const userId = searchParams.get('userId')
     const [user, setUser] = useState<any>(null)
@@ -109,5 +111,13 @@ export default function ProfilePage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>}>
+            <ProfileContent />
+        </Suspense>
     )
 }

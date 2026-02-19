@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Navbar } from '@/components/landing/Navbar'
 
-export default function QualifierPage() {
+import { Suspense } from 'react'
+
+function QualifierContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const userId = searchParams.get('userId')
@@ -186,5 +188,13 @@ export default function QualifierPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function QualifierPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>}>
+            <QualifierContent />
+        </Suspense>
     )
 }

@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Navbar } from '@/components/landing/Navbar'
 
-export default function ArenaPage() {
+import { Suspense } from 'react'
+
+function ArenaContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const userId = searchParams.get('userId')
@@ -168,5 +170,13 @@ export default function ArenaPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function ArenaPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>}>
+            <ArenaContent />
+        </Suspense>
     )
 }

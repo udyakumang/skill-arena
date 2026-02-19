@@ -15,7 +15,9 @@ interface BPTier {
     rewardValue: string
 }
 
-export default function BattlePassPage() {
+import { Suspense } from 'react'
+
+function BattlePassContent() {
     const searchParams = useSearchParams()
     const userId = searchParams.get('userId')
     const [xp, setXp] = useState(0)
@@ -118,5 +120,13 @@ export default function BattlePassPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function BattlePassPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>}>
+            <BattlePassContent />
+        </Suspense>
     )
 }
