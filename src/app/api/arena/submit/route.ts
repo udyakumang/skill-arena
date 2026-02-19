@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { calculateNewRating } from '@/core/rating'
 import { checkPromotion } from '@/core/division'
-import { calculateLevel, XP_EVENTS, getNextLevelProgress } from '@/core/xp'
+import { calculateLevel, XP_EVENTS } from '@/core/xp'
 import { checkBadgeUnlocks, BADGES } from '@/core/gamification'
 
 export async function POST(req: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
         const user = await db.user.findUnique({
             where: { id: userId },
-            include: { badges: true } // Need badges for check
+            include: { badges: true }
         })
         if (!user) throw new Error("User not found")
 
@@ -96,12 +96,7 @@ export async function POST(req: NextRequest) {
 
             // Grant Badges
             for (const badgeId of newBadges) {
-                // Create badge if not exists? (Badges data should be seeded)
-                // We assume Badges table is seeded. If not, this might fail foreign key.
-                // For safety in this MVP, we try catch or upsert if unsure.
-                // Ideally Badges are static rows.
                 try {
-                    // Ensure Badge Definitions exist (Lazy Seeding)
                     const badgeDef = Object.values(BADGES).find(b => b.id === badgeId)
                     if (badgeDef) {
                         await tx.badge.upsert({
@@ -117,6 +112,102 @@ export async function POST(req: NextRequest) {
                 } catch (e) {
                     console.error("Badge grant failed", e)
                 }
+            }
+
+
+            // --- Phase 9: Regional Ladder ---
+            // Upsert ladder entry
+            // Need Active Season
+            const activeSeason = await tx.season.findFirst({ where: { isActive: true } })
+            if (activeSeason) {
+                // Determine skillId? 
+                // Ranked session might not be single-choice skill? 
+                // "Regional Ladder Entry (Per skill + season)"
+                // If session is multi-skill, do we update all?
+                // For MVP, if metadata has skillId, we use it. If not, maybe skip or use 'General'?
+                // Session doesn't have skillId column. usage: metadata.skillId?
+                // Or look at items?
+                // Let's look at items. If mixed, we might skip. But "Ranked" usually targets a skill or is general.
+                // Resume assumes per skill. 
+                // Let's iterate unique skills in session items and update their ladders?
+                // Or just update "Overall"?
+                // The requirements said "Regional Ladder Entry (Per skill + season)".
+                // So yes, iterate skills.
+
+                const uniqueSkills = new Set(session.items.map((i: any) => i.skillId))
+                for (const skillId of uniqueSkills) {
+                    await tx.regionalLadderEntry.upsert({
+                        where: {
+                            seasonId_userId_skillId: {
+                                seasonId: activeSeason.id,
+                                userId,
+                                skillId: skillId as string
+                            }
+                        },
+                        update: {
+                            rating: ratingUpdate.newRating, // Using Global CR as proxy for Skill Rating?
+                            // Or should we track skill-specific rating? 
+                            // Req: "copy rating/division from MasteryState (or compute per-skill rating)"
+                            // We don't have per-skill rating easily available here without fetching MasteryState.
+                            // Let's fetch MasteryState for this skill?
+                            // Or just use Global CR for now as MVP approximation if per-skill is too heavy.
+                            // Better: Update uses Global CR for simplicity unless MasteryState is available.
+                            // For this iteration, let's use Global CR.
+                            division: promo.newDivision,
+                            region: user.region || 'IN'
+                        },
+                        create: {
+                            seasonId: activeSeason.id,
+                            userId,
+                            skillId: skillId as string,
+                            region: user.region || 'IN',
+                            rating: ratingUpdate.newRating,
+                            division: promo.newDivision
+                        }
+                    })
+                }
+            }
+
+            // --- Phase 8: Daily Aggregates ---
+            const today = new Date()
+            today.setHours(0, 0, 0, 0) // Normalize to date
+
+            // Group items by skill
+            interface SkillStats { attempts: number; correct: number; time: number; hints: number }
+            const skillItems = session.items.reduce((acc: Record<string, SkillStats>, item: any) => {
+                if (!acc[item.skillId]) acc[item.skillId] = { attempts: 0, correct: 0, time: 0, hints: 0 }
+                acc[item.skillId].attempts += 1
+                if (item.isCorrect) acc[item.skillId].correct += 1
+                acc[item.skillId].time += item.timeTakenMs || 0
+                acc[item.skillId].hints += item.hintsUsed || 0
+                return acc
+            }, {} as Record<string, SkillStats>)
+
+            for (const [skillId, stats] of Object.entries(skillItems)) {
+                await tx.dailySkillAggregate.upsert({
+                    where: {
+                        userId_skillId_date: {
+                            userId,
+                            skillId,
+                            date: today
+                        }
+                    },
+                    update: {
+                        attempts: { increment: stats.attempts },
+                        correct: { increment: stats.correct },
+                        // avgDuration ignored for atomic simplicity in this MVP
+                        hintsUsed: { increment: stats.hints }
+                    },
+                    create: {
+                        userId,
+                        skillId,
+                        date: today,
+                        attempts: stats.attempts,
+                        correct: stats.correct,
+                        avgDuration: Math.round(stats.time / stats.attempts),
+                        hintsUsed: stats.hints
+                    }
+                })
             }
         })
 

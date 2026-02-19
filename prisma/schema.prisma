@@ -44,6 +44,19 @@ model User {
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  // Parent Dashboard (Phase 8)
+  childLinkCode String?   @unique // Generated unique code for child to share
+  linkedChildId String?
+  linkedChild   User?     @relation("ParentChild", fields: [linkedChildId], references: [id])
+  parent        User[]    @relation("ParentChild")
+  
+  dailyAggregates DailySkillAggregate[]
+  
+  // Global Competition (Phase 9)
+  region        Region    @default(IN)
+  qualifierEntries QualifierEntry[]
+  globalFinalists GlobalFinalist[]
 }
 
 model PrivacyConsent {
@@ -59,12 +72,8 @@ model PrivacyConsent {
 
 // --- REGIONS & LOCALIZATION ---
 
-model Region {
-  code        String @id // e.g. "US", "IN", "UK"
-  name        String
-  currency    String
-  isActive    Boolean @default(true)
-}
+// Region model removed in favor of Enum for Phase 9
+// enum UserRole { ... } follows
 
 enum UserRole {
   STUDENT
@@ -87,6 +96,7 @@ model Skill {
   
   blueprints    ContentBlueprint[]
   masteryStates MasteryState[]
+  dailyAggregates DailySkillAggregate[]
 }
 
 model SkillPrerequisite {
@@ -317,3 +327,134 @@ model UserBadge {
   
   @@unique([userId, badgeId])
 }
+
+// --- PARENT DASHBOARD & ANALYTICS (PHASE 8) ---
+
+model DailySkillAggregate {
+  id          String   @id @default(cuid())
+  userId      String
+  skillId     String
+  date        DateTime @db.Date // Store as date only
+  attempts    Int      @default(0)
+  correct     Int      @default(0)
+  avgDuration Int      @default(0) // ms
+  hintsUsed   Int      @default(0)
+  masteryDelta Int     @default(0) // Change in mastery score
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+  skill       Skill    @relation(fields: [skillId], references: [id])
+
+  @@unique([userId, skillId, date])
+}
+
+model SafetyEventLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  eventType String   // e.g. "PARENT_LINK_FAIL", "RAPID_SUBMIT"
+  details   Json
+  createdAt DateTime @default(now())
+}
+
+// --- GLOBAL COMPETITION SYSTEM (PHASE 9) ---
+
+enum Region {
+  IN
+  US
+  EU
+  SEA
+  MEA
+  LATAM
+}
+
+model Season {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model RegionalLadderEntry {
+  id          String   @id @default(cuid())
+  seasonId    String
+  userId      String
+  skillId     String
+  region      Region
+  rating      Int
+  division    Division
+  rank        Int?       // computed periodically; optional
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@unique([seasonId, userId, skillId])
+  @@index([seasonId, skillId, region, rating])
+}
+
+model Qualifier {
+  id          String   @id @default(cuid())
+  seasonId    String
+  skillId     String
+  region      Region
+  weekStart   DateTime
+  weekEnd     DateTime
+  status      String // "OPEN" | "LOCKED" | "COMPLETED"
+  createdAt   DateTime @default(now())
+
+  entries     QualifierEntry[]
+  
+  @@unique([seasonId, skillId, region, weekStart])
+}
+
+model QualifierEntry {
+  id           String   @id @default(cuid())
+  qualifierId  String
+  userId       String
+  skillId      String
+  region       Region
+  seed         Int
+  score        Int
+  completedAt  DateTime? // Null if in progress
+  ratingAtEntry Int
+  createdAt    DateTime @default(now())
+
+  qualifier    Qualifier @relation(fields: [qualifierId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@unique([qualifierId, userId])
+  @@index([qualifierId, score])
+}
+
+model GlobalFinal {
+  id        String   @id @default(cuid())
+  seasonId  String
+  skillId   String
+  status    String // "UPCOMING" | "LIVE" | "ENDED"
+  startAt   DateTime
+  endAt     DateTime
+  createdAt DateTime @default(now())
+  
+  finalists GlobalFinalist[]
+
+  @@unique([seasonId, skillId])
+}
+
+model GlobalFinalist {
+  id          String   @id @default(cuid())
+  globalFinalId String
+  userId      String
+  region      Region
+  qualifierId String
+  qualifierRank Int
+  seed        Int
+  finalScore  Int?
+  completedAt DateTime?
+
+  final       GlobalFinal @relation(fields: [globalFinalId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@unique([globalFinalId, userId])
+  @@index([globalFinalId, finalScore])
+}
+

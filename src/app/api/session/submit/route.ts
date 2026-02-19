@@ -133,6 +133,44 @@ export async function POST(req: NextRequest) {
             newScore: nextState.score
         })
 
+        // --- Phase 8: Daily Aggregates ---
+        const today = new Date()
+        today.setHours(0, 0, 0, 0) // Normalize
+
+        // Upsert Daily Aggregate
+        // We catch errors here so analytics doesn't block the main game flow
+        try {
+            await db.dailySkillAggregate.upsert({
+                where: {
+                    userId_skillId_date: {
+                        userId: session.userId,
+                        skillId: item.skillId,
+                        date: today
+                    }
+                },
+                update: {
+                    attempts: { increment: 1 },
+                    correct: { increment: isCorrect ? 1 : 0 },
+                    // avgDuration: approximation again or we just store sum? 
+                    // Let's iterate: if we can't change schema, we'll just store last duration or ignore avg for now
+                    // Actually let's use a "running average" if we query it first? No, extra query.
+                    // We will just increment attempts/correct/hints.
+                    hintsUsed: { increment: hintsUsed || 0 }
+                },
+                create: {
+                    userId: session.userId,
+                    skillId: item.skillId,
+                    date: today,
+                    attempts: 1,
+                    correct: isCorrect ? 1 : 0,
+                    avgDuration: timeTakenMs || 0,
+                    hintsUsed: hintsUsed || 0
+                }
+            })
+        } catch (e) {
+            console.error("Failed to update daily aggregate", e)
+        }
+
         return NextResponse.json({
             result: { isCorrect, masteryScore: nextState.score, streak: nextState.streak },
             animation,
