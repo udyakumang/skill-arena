@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
             division: promo.newDivision,
             xp: newXp,
             winStreak: newWinStreak,
-            existingBadgeIds: user.badges.map(b => b.badgeId)
+            existingBadgeIds: (user as any).badges?.map((b: any) => b.badgeId) || []
         })
 
         // 10. Persist Updates via Transaction
